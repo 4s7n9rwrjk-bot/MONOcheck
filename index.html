@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MONOcheck - スマート荷物最適化</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f5fa',
+                            100: '#d9e6f3',
+                            500: '#1e3a6e',
+                            600: '#162b50',
+                            700: '#0f1f3a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Custom scrollbar for clean UI */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
+
+    <meta name="theme-color" content="#1e3a6e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="MONOcheck">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./supabase-config.js"></script>
+    <script src="./sync.js"></script>
+
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer group" onclick="switchTab('home')">
+                <!-- App Logo Card -->
+                <div class="w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-900 shadow-sm p-1.5 overflow-hidden">
+                    <svg viewBox="0 0 100 100" class="w-full h-full fill-brand-600">
+                        <path d="M35 20 C35 12, 65 12, 65 20 L65 28 C75 28, 85 38, 85 50 L85 80 C85 88, 75 92, 65 92 L35 92 C25 92, 15 88, 15 80 L15 50 C15 38, 25 28, 35 28 Z" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+                        <path d="M42 15 L58 15 C60 15, 60 25, 58 25 L42 25 C40 25, 40 15, 42 15 Z" fill="currentColor"/>
+                        <path d="M32 50 L45 65 L70 38" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-base tracking-tight text-slate-900 leading-tight">MONO<span class="text-brand-600">check</span></h1>
+                    <p class="text-[10px] text-slate-400 font-medium tracking-wide">荷物最適化</p>
+                </div>
+            </div>
+            
+            <nav class="flex space-x-1">
+                <button onclick="switchTab('home')" id="nav-home" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors bg-brand-50 text-brand-600 flex items-center space-x-1">
+                    <i class="fa-solid fa-house"></i>
+                    <span class="hidden sm:inline">ホーム</span>
+                </button>
+                <button onclick="switchTab('checklist')" id="nav-checklist" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors text-slate-600 hover:bg-slate-100 relative flex items-center space-x-1">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span class="hidden sm:inline">チェック</span>
+                    <span id="badge-count" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full shadow-xs">0</span>
+                </button>
+                <button onclick="switchTab('master')" id="nav-master" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors text-slate-600 hover:bg-slate-100 flex items-center space-x-1">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span class="hidden sm:inline">マスタ</span>
+                </button>
+                <button onclick="openSyncModal()" id="nav-sync" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors text-slate-600 hover:bg-slate-100 flex items-center space-x-1" title="PC・スマホ同期">
+                    <i class="fa-solid fa-cloud"></i>
+                    <span class="hidden sm:inline">同期</span>
+                    <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-slate-300"></span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-5 pb-24">
+
+        <!-- Home View -->
+        <section id="view-home" class="space-y-5">
+            <div class="bg-gradient-to-br from-brand-600 to-brand-700 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="relative z-10">
+                    <div class="inline-flex items-center space-x-1.5 bg-white/15 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium mb-3 border border-white/20">
+                        <i class="fa-solid fa-sparkles text-amber-300"></i>
+                        <span>スマート荷物整理</span>
+                    </div>
+                    <h2 class="text-2xl font-extrabold mb-2 tracking-tight">本日の予定は？</h2>
+                    <p class="text-slate-100 text-xs sm:text-sm leading-relaxed mb-4 opacity-90">
+                        今日の用事を複数選択してください。自動で優先度を整理して最適な持ち物リストを作成します。
+                    </p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center">
+                        <i class="fa-solid fa-calendar-days text-brand-600 mr-2"></i>本日の用事を選ぶ
+                    </h3>
+                    <div class="flex space-x-3 text-xs">
+                        <button onclick="selectAllTasks(true)" class="text-brand-600 hover:underline font-semibold">全選択</button>
+                        <span class="text-slate-300">|</span>
+                        <button onclick="selectAllTasks(false)" class="text-slate-500 hover:underline font-semibold">全解除</button>
+                    </div>
+                </div>
+
+                <div id="home-tasks-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Dynamic Task Checkboxes -->
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="text-xs text-slate-500 flex items-center text-center sm:text-left">
+                        <i class="fa-solid fa-circle-info text-brand-500 mr-1.5 text-sm shrink-0"></i>
+                        <span id="selected-task-summary">用事が選択されていません</span>
+                    </div>
+                    <button onclick="generateChecklist()" class="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white font-semibold px-6 py-3.5 rounded-2xl shadow-lg shadow-brand-600/20 transition-all active:scale-95 flex items-center justify-center space-x-2">
+                        <span>荷物を最適化する</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Checklist View -->
+        <section id="view-checklist" class="space-y-5 hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200 shadow-xs">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center">
+                        <i class="fa-solid fa-clipboard-check text-brand-600 mr-2"></i>持ち物チェックリスト
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5" id="active-tasks-label">選択された用事: なし</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="resetChecklistProgress()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors">
+                        <i class="fa-solid fa-rotate-right mr-1.5"></i>リセット
+                    </button>
+                    <button onclick="switchTab('home')" class="px-3 py-2 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-xl text-xs font-semibold transition-colors">
+                        <i class="fa-solid fa-pen mr-1.5"></i>用事を選び直す
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs">
+                <div class="flex justify-between text-xs font-semibold text-slate-600 mb-2">
+                    <span>準備の進捗状況</span>
+                    <span id="progress-text">0 / 0 完了 (0%)</span>
+                </div>
+                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200/60">
+                    <div id="progress-bar" class="bg-brand-600 h-full rounded-full transition-all duration-300 w-0"></div>
+                </div>
+            </div>
+
+            <div id="optimized-list-container" class="space-y-4">
+                <!-- Dynamically generated priority groups -->
+            </div>
+        </section>
+
+        <!-- Master View -->
+        <section id="view-master" class="space-y-5 hidden">
+            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs">
+                <div class="flex border-b border-slate-200 mb-5 overflow-x-auto gap-2">
+                    <button onclick="switchMasterTab('items')" id="master-tab-items" class="pb-3 px-3 font-bold text-xs sm:text-sm border-b-2 border-brand-600 text-brand-600 transition-colors whitespace-nowrap">
+                        <i class="fa-solid fa-box-archive mr-1.5"></i>持ち物
+                    </button>
+                    <button onclick="switchMasterTab('tasks')" id="master-tab-tasks" class="pb-3 px-3 font-bold text-xs sm:text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-colors whitespace-nowrap">
+                        <i class="fa-solid fa-clipboard-list mr-1.5"></i>用事
+                    </button>
+                    <button onclick="switchMasterTab('relations')" id="master-tab-relations" class="pb-3 px-3 font-bold text-xs sm:text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-colors whitespace-nowrap">
+                        <i class="fa-solid fa-link mr-1.5"></i>優先度・紐付け
+                    </button>
+                </div>
+
+                <!-- 1. Items Master Section -->
+                <div id="master-section-items" class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800 text-sm sm:text-base">持ち物一覧</h3>
+                        <button onclick="openItemModal()" class="bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm flex items-center space-x-1.5">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>追加</span>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-[11px] text-slate-400 uppercase bg-slate-50/80">
+                                    <th class="py-2.5 px-3 font-bold">アイテム名</th>
+                                    <th class="py-2.5 px-3 font-bold">カテゴリ</th>
+                                    <th class="py-2.5 px-3 font-bold text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="master-items-tbody" class="divide-y divide-slate-100 text-sm">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. Tasks Master Section -->
+                <div id="master-section-tasks" class="space-y-4 hidden">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800 text-sm sm:text-base">用事一覧</h3>
+                        <button onclick="openTaskModal()" class="bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm flex items-center space-x-1.5">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>追加</span>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-[11px] text-slate-400 uppercase bg-slate-50/80">
+                                    <th class="py-2.5 px-3 font-bold">用事名</th>
+                                    <th class="py-2.5 px-3 font-bold">説明</th>
+                                    <th class="py-2.5 px-3 font-bold text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="master-tasks-tbody" class="divide-y divide-slate-100 text-sm">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 3. Relations & Priorities Section -->
+                <div id="master-section-relations" class="space-y-4 hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm sm:text-base">用事ごとの持ち物設定</h3>
+                            <p class="text-[11px] text-slate-500 mt-0.5">どの用事にどのアイテムがどの優先度で必要かを設定します。</p>
+                        </div>
+                        <select id="relation-task-filter" onchange="renderRelationsMatrix()" class="w-full sm:w-auto bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-brand-500 font-medium">
+                            <!-- Populated via JS -->
+                        </select>
+                    </div>
+                    <div id="relations-container" class="space-y-3">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Item Modal -->
+    <div id="modal-item" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 id="modal-item-title" class="font-bold text-base text-slate-900">持ち物を追加</h3>
+                <button onclick="closeItemModal()" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-xl flex items-center justify-center hover:bg-slate-100">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="form-item" onsubmit="saveItem(event)" class="space-y-3">
+                <input type="hidden" id="item-id">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">アイテム名</label>
+                    <input type="text" id="item-name" required placeholder="例: モバイルバッテリー" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">カテゴリ</label>
+                    <input type="text" id="item-category" placeholder="例: ガジェット" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeItemModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">キャンセル</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-md">保存する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task Modal -->
+    <div id="modal-task" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 id="modal-task-title" class="font-bold text-base text-slate-900">用事を追加</h3>
+                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-xl flex items-center justify-center hover:bg-slate-100">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="form-task" onsubmit="saveTask(event)" class="space-y-3">
+                <input type="hidden" id="task-id">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">用事名</label>
+                    <input type="text" id="task-name" required placeholder="例: カフェで作業" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">説明 / メモ</label>
+                    <input type="text" id="task-desc" placeholder="例: ノートPCを使った執筆" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">キャンセル</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-md">保存する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation / Alert Modal -->
+    <div id="modal-confirm" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-xs w-full p-6 shadow-2xl text-center space-y-4">
+            <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl mx-auto flex items-center justify-center text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 id="confirm-title" class="font-bold text-base text-slate-900">確認</h3>
+                <p id="confirm-message" class="text-xs text-slate-500 mt-1">本当に削除しますか？</p>
+            </div>
+            <div class="flex space-x-2 pt-1">
+                <button type="button" onclick="closeConfirmModal()" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors">キャンセル</button>
+                <button type="button" id="confirm-ok-btn" class="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-md">削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    
+    <!-- Cloud Sync Modal -->
+    <div id="sync-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-cloud text-brand-500"></i>
+                        <h3 class="font-bold text-slate-800">PC・スマホ同期</h3>
+                    </div>
+                    <p id="sync-status-text" class="text-xs text-slate-500 mt-1">確認中…</p>
+                </div>
+                <button onclick="closeSyncModal()" class="w-9 h-9 rounded-full hover:bg-slate-100 text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <div id="sync-message" class="text-xs rounded-2xl px-4 py-3 bg-slate-100 text-slate-600">
+                    PCとスマホで同じアカウントを使うとデータを共有できます。
+                </div>
+
+                <div id="sync-login-area" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">メールアドレス</label>
+                        <input id="sync-email" type="email" autocomplete="email"
+                            class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500 text-base"
+                            placeholder="example@email.com">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">パスワード</label>
+                        <input id="sync-password" type="password" autocomplete="current-password"
+                            class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500 text-base"
+                            placeholder="6文字以上">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <button onclick="syncSignUp()" class="py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold text-sm hover:bg-slate-200">
+                            新規登録
+                        </button>
+                        <button onclick="syncSignIn()" class="py-3 rounded-2xl bg-brand-500 text-white font-bold text-sm hover:bg-brand-600">
+                            ログイン
+                        </button>
+                    </div>
+                    <p class="text-[11px] leading-relaxed text-slate-400">
+                        同じメールアドレス・パスワードでPCとスマホにログインしてください。
+                    </p>
+                </div>
+
+                <div id="sync-account-area" class="hidden space-y-3">
+                    <div class="rounded-2xl bg-emerald-50 px-4 py-3">
+                        <div class="text-[11px] text-emerald-700 font-semibold">ログイン中</div>
+                        <div id="sync-user-email" class="text-sm text-emerald-900 font-bold break-all mt-0.5"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="syncNow()" class="py-3 rounded-2xl bg-brand-500 text-white font-bold text-sm hover:bg-brand-600">
+                            <i class="fa-solid fa-rotate mr-1"></i>今すぐ同期
+                        </button>
+                        <button onclick="syncSignOut()" class="py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold text-sm hover:bg-slate-200">
+                            ログアウト
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="closeSyncModal()" class="w-full py-2.5 text-sm text-slate-500 font-semibold hover:text-slate-800">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <script>
+        const PRIORITIES = {
+            1: { name: '必須', desc: '必ず必要なもの', badgeClass: 'bg-rose-100 text-rose-700 border-rose-200', dotClass: 'bg-rose-500' },
+            2: { name: '重要', desc: '必須の次に入れるもの', badgeClass: 'bg-orange-100 text-orange-700 border-orange-200', dotClass: 'bg-orange-500' },
+            3: { name: '推奨', desc: 'あると便利なもの', badgeClass: 'bg-amber-100 text-amber-700 border-amber-200', dotClass: 'bg-amber-500' },
+            4: { name: '要余裕', desc: '荷物を圧迫する場合抜くもの', badgeClass: 'bg-blue-100 text-blue-700 border-blue-200', dotClass: 'bg-blue-500' },
+            5: { name: '任意', desc: '状況に応じて必要なもの', badgeClass: 'bg-slate-100 text-slate-700 border-slate-200', dotClass: 'bg-slate-500' }
+        };
+
+        const DEFAULT_ITEMS = [
+            { id: 'item-1', name: 'スマートフォン', category: '身の回り' },
+            { id: 'item-2', name: '財布・現金・カード', category: '身の回り' },
+            { id: 'item-3', name: '自宅の鍵', category: '身の回り' },
+            { id: 'item-4', name: 'ノートPC', category: 'ガジェット' },
+            { id: 'item-5', name: 'モバイルバッテリー', category: 'ガジェット' },
+            { id: 'item-6', name: '充電ケーブル類', category: 'ガジェット' },
+            { id: 'item-7', name: 'カメラ本体', category: '撮影・趣味' },
+            { id: 'item-8', name: '予備バッテリー・SDカード', category: '撮影・趣味' },
+            { id: 'item-9', name: '折りたたみ傘', category: '天候対策' },
+            { id: 'item-10', name: 'ハンカチ・ティッシュ', category: '身だしなみ' },
+            { id: 'item-11', name: 'ペットボトル・水筒', category: '飲食' }
+        ];
+
+        const DEFAULT_TASKS = [
+            { id: 'task-1', name: 'お出かけ・普段', desc: '最低限の外出' },
+            { id: 'task-2', name: 'カフェで作業', desc: 'PCを使った仕事や執筆' },
+            { id: 'task-3', name: '写真撮影', desc: 'カメラを持って外出' }
+        ];
+
+        const DEFAULT_RELATIONS = {
+            'task-1': { 'item-1': 1, 'item-2': 1, 'item-3': 1, 'item-10': 3 },
+            'task-2': { 'item-1': 1, 'item-2': 1, 'item-3': 1, 'item-4': 1, 'item-5': 2, 'item-6': 2, 'item-10': 3, 'item-11': 3 },
+            'task-3': { 'item-1': 1, 'item-2': 1, 'item-3': 1, 'item-5': 2, 'item-7': 1, 'item-8': 2, 'item-9': 4, 'item-11': 3 }
+        };
+
+        let appData = {
+            items: [],
+            tasks: [],
+            relations: {},
+            checkedItems: {}
+        };
+
+        const STORAGE_KEY = 'monocheck_app_data_v4';
+
+        function loadData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    appData.items = parsed.items || DEFAULT_ITEMS;
+                    appData.tasks = parsed.tasks || DEFAULT_TASKS;
+                    appData.relations = parsed.relations || DEFAULT_RELATIONS;
+                    appData.checkedItems = parsed.checkedItems || {};
+                    return;
+                } catch (e) {
+                    console.error('LocalStorage load error', e);
+                }
+            }
+            appData.items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+            appData.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+            appData.relations = JSON.parse(JSON.stringify(DEFAULT_RELATIONS));
+            appData.checkedItems = {};
+            saveData();
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            localStorage.setItem('monocheck_local_updated_at', String(Date.now()));
+            if (typeof queueCloudSync === 'function') queueCloudSync();
+        }
+
+        function switchTab(tabId) {
+            ['home', 'checklist', 'master'].forEach(t => {
+                const sec = document.getElementById(`view-${t}`);
+                const nav = document.getElementById(`nav-${t}`);
+                if (sec) sec.classList.add('hidden');
+                if (nav) {
+                    nav.classList.remove('bg-brand-50', 'text-brand-600');
+                    nav.classList.add('text-slate-600');
+                }
+            });
+
+            const activeSec = document.getElementById(`view-${tabId}`);
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeSec) activeSec.classList.remove('hidden');
+            if (activeNav) {
+                activeNav.classList.remove('text-slate-600');
+                activeNav.classList.add('bg-brand-50', 'text-brand-600');
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (tabId === 'home') {
+                renderHomeTasks();
+            } else if (tabId === 'master') {
+                renderMasterItems();
+                renderMasterTasks();
+                initRelationFilter();
+                renderRelationsMatrix();
+            }
+        }
+
+        function switchMasterTab(subTab) {
+            ['items', 'tasks', 'relations'].forEach(st => {
+                const sec = document.getElementById(`master-section-${st}`);
+                const btn = document.getElementById(`master-tab-${st}`);
+                if (sec) sec.classList.add('hidden');
+                if (btn) {
+                    btn.classList.remove('border-brand-600', 'text-brand-600');
+                    btn.classList.add('border-transparent', 'text-slate-400');
+                }
+            });
+
+            const activeSec = document.getElementById(`master-section-${subTab}`);
+            const activeBtn = document.getElementById(`master-tab-${subTab}`);
+            if (activeSec) activeSec.classList.remove('hidden');
+            if (activeBtn) {
+                activeBtn.classList.remove('border-transparent', 'text-slate-400');
+                activeBtn.classList.add('border-brand-600', 'text-brand-600');
+            }
+        }
+
+        if (!window.selectedTaskIds) {
+            window.selectedTaskIds = new Set();
+        }
+
+        function renderHomeTasks() {
+            const container = document.getElementById('home-tasks-container');
+            if (!container) return;
+
+            if (appData.tasks.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-6 text-center text-slate-400 text-xs">用事が登録されていません</div>`;
+                return;
+            }
+
+            container.innerHTML = appData.tasks.map(task => {
+                const isChecked = window.selectedTaskIds.has(task.id);
+                return `
+                    <label class="flex items-start p-3.5 rounded-2xl border ${isChecked ? 'border-brand-500 bg-brand-50/50 shadow-xs' : 'border-slate-200 bg-white'} cursor-pointer transition-all">
+                        <input type="checkbox" value="${task.id}" ${isChecked ? 'checked' : ''} onchange="onTaskCheckboxChange(this)" class="mt-0.5 w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                        <div class="ml-3 select-none min-w-0">
+                            <div class="font-bold text-slate-800 text-xs sm:text-sm truncate">${escapeHTML(task.name)}</div>
+                            <div class="text-[11px] text-slate-500 mt-0.5 truncate">${escapeHTML(task.desc || '')}</div>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+            updateSelectedSummary();
+        }
+
+        function onTaskCheckboxChange(checkbox) {
+            if (checkbox.checked) {
+                window.selectedTaskIds.add(checkbox.value);
+            } else {
+                window.selectedTaskIds.delete(checkbox.value);
+            }
+            const label = checkbox.closest('label');
+            if (checkbox.checked) {
+                label.className = "flex items-start p-3.5 rounded-2xl border border-brand-500 bg-brand-50/50 shadow-xs cursor-pointer transition-all";
+            } else {
+                label.className = "flex items-start p-3.5 rounded-2xl border border-slate-200 bg-white cursor-pointer transition-all";
+            }
+            updateSelectedSummary();
+        }
+
+        function selectAllTasks(select) {
+            window.selectedTaskIds.clear();
+            if (select) {
+                appData.tasks.forEach(t => window.selectedTaskIds.add(t.id));
+            }
+            renderHomeTasks();
+        }
+
+        function updateSelectedSummary() {
+            const summaryEl = document.getElementById('selected-task-summary');
+            const count = window.selectedTaskIds.size;
+            if (count === 0) {
+                summaryEl.textContent = '用事が選択されていません';
+            } else {
+                const names = appData.tasks.filter(t => window.selectedTaskIds.has(t.id)).map(t => t.name).join(', ');
+                summaryEl.textContent = `${count}件選択中: ${names}`;
+            }
+        }
+
+        function generateChecklist() {
+            if (window.selectedTaskIds.size === 0) {
+                showToast('少なくとも1つの用事を選択してください', 'error');
+                return;
+            }
+
+            const aggregated = {};
+            window.selectedTaskIds.forEach(taskId => {
+                const taskRelations = appData.relations[taskId] || {};
+                const taskObj = appData.tasks.find(t => t.id === taskId);
+                const taskName = taskObj ? taskObj.name : '用事';
+
+                Object.keys(taskRelations).forEach(itemId => {
+                    const priorityRank = taskRelations[itemId];
+                    const itemObj = appData.items.find(i => i.id === itemId);
+                    if (!itemObj) return;
+
+                    if (!aggregated[itemId]) {
+                        aggregated[itemId] = {
+                            item: itemObj,
+                            bestRank: priorityRank,
+                            sources: [taskName]
+                        };
+                    } else {
+                        if (priorityRank < aggregated[itemId].bestRank) {
+                            aggregated[itemId].bestRank = priorityRank;
+                        }
+                        if (!aggregated[itemId].sources.includes(taskName)) {
+                            aggregated[itemId].sources.push(taskName);
+                        }
+                    }
+                });
+            });
+
+            const listContainer = document.getElementById('optimized-list-container');
+            const activeTasksLabel = document.getElementById('active-tasks-label');
+            const selectedNames = appData.tasks.filter(t => window.selectedTaskIds.has(t.id)).map(t => t.name).join('、');
+            activeTasksLabel.textContent = `選択された用事: ${selectedNames}`;
+
+            const itemsArray = Object.values(aggregated);
+            if (itemsArray.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="bg-white rounded-3xl border border-slate-200 p-6 text-center space-y-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl"></i>
+                        <h3 class="font-bold text-slate-800 text-sm">持ち物が見つかりませんでした</h3>
+                        <p class="text-xs text-slate-500">選択した用事に持ち物が紐づいていません。「マスタ」から優先度を設定してください。</p>
+                    </div>
+                `;
+                switchTab('checklist');
+                updateProgress();
+                return;
+            }
+
+            const groupedByRank = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+            itemsArray.forEach(entry => {
+                groupedByRank[entry.bestRank].push(entry);
+            });
+
+            let htmlOutput = '';
+            [1, 2, 3, 4, 5].forEach(rank => {
+                const groupItems = groupedByRank[rank];
+                if (groupItems.length === 0) return;
+
+                const pInfo = PRIORITIES[rank];
+                htmlOutput += `
+                    <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+                        <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2.5 h-2.5 rounded-full ${pInfo.dotClass}"></span>
+                                <h3 class="font-bold text-slate-800 text-xs sm:text-sm">${pInfo.name}</h3>
+                            </div>
+                            <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${pInfo.badgeClass}">${groupItems.length}件</span>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                `;
+
+                groupItems.sort((a, b) => a.item.name.localeCompare(b.item.name)).forEach(entry => {
+                    const itemId = entry.item.id;
+                    const isChecked = !!appData.checkedItems[itemId];
+                    const sourcesStr = entry.sources.join(', ');
+
+                    htmlOutput += `
+                        <label class="flex items-center justify-between p-3.5 hover:bg-slate-50/80 cursor-pointer transition-colors ${isChecked ? 'bg-slate-50/50' : ''}">
+                            <div class="flex items-center space-x-3 min-w-0">
+                                <input type="checkbox" data-item-id="${itemId}" ${isChecked ? 'checked' : ''} onchange="toggleCheckItem(this)" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 shrink-0">
+                                <div class="min-w-0">
+                                    <div class="font-medium text-slate-900 text-xs sm:text-sm truncate ${isChecked ? 'line-through text-slate-400' : ''}" id="label-text-${itemId}">${escapeHTML(entry.item.name)}</div>
+                                    <div class="text-[10px] text-slate-400 truncate mt-0.5">用途: ${escapeHTML(sourcesStr)}</div>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg shrink-0 ml-2">${escapeHTML(entry.item.category || '一般')}</span>
+                        </label>
+                    `;
+                });
+                htmlOutput += `</div></div>`;
+            });
+
+            listContainer.innerHTML = htmlOutput;
+            switchTab('checklist');
+            updateProgress();
+        }
+
+        function toggleCheckItem(checkbox) {
+            const itemId = checkbox.getAttribute('data-item-id');
+            appData.checkedItems[itemId] = checkbox.checked;
+            saveData();
+            
+            const textEl = document.getElementById(`label-text-${itemId}`);
+            if (textEl) {
+                if (checkbox.checked) {
+                    textEl.classList.add('line-through', 'text-slate-400');
+                    textEl.closest('label').classList.add('bg-slate-50/50');
+                } else {
+                    textEl.classList.remove('line-through', 'text-slate-400');
+                    textEl.closest('label').classList.remove('bg-slate-50/50');
+                }
+            }
+            updateProgress();
+        }
+
+        function resetChecklistProgress() {
+            appData.checkedItems = {};
+            saveData();
+            generateChecklist();
+            showToast('進捗をリセットしました', 'success');
+        }
+
+        function updateProgress() {
+            const checkboxes = document.querySelectorAll('#optimized-list-container input[type="checkbox"]');
+            const total = checkboxes.length;
+            let checked = 0;
+            checkboxes.forEach(cb => { if (cb.checked) checked++; });
+
+            const percent = total > 0 ? Math.round((checked / total) * 100) : 0;
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const badgeCount = document.getElementById('badge-count');
+
+            if (progressBar) progressBar.style.width = `${percent}%`;
+            if (progressText) progressText.textContent = `${checked} / ${total} 完了 (${percent}%)`;
+            
+            if (badgeCount) {
+                const uncheckedCount = total - checked;
+                if (uncheckedCount > 0) {
+                    badgeCount.textContent = uncheckedCount;
+                    badgeCount.classList.remove('hidden');
+                } else {
+                    badgeCount.classList.add('hidden');
+                }
+            }
+        }
+
+        function renderMasterItems() {
+            const tbody = document.getElementById('master-items-tbody');
+            if (!tbody) return;
+
+            if (appData.items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="py-6 text-center text-slate-400 text-xs">アイテムがありません</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = appData.items.map(item => `
+                <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="py-3 px-3 font-medium text-slate-800">${escapeHTML(item.name)}</td>
+                    <td class="py-3 px-3 text-slate-500 text-xs">${escapeHTML(item.category || '-')}</td>
+                    <td class="py-3 px-3 text-right space-x-1">
+                        <button onclick="openItemModal('${item.id}')" class="text-brand-600 p-1.5 rounded-lg hover:bg-brand-50"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <button onclick="confirmDeleteItem('${item.id}')" class="text-rose-500 p-1.5 rounded-lg hover:bg-rose-50"><i class="fa-solid fa-trash text-xs"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openItemModal(id = null) {
+            const modal = document.getElementById('modal-item');
+            const title = document.getElementById('modal-item-title');
+            const idInput = document.getElementById('item-id');
+            const nameInput = document.getElementById('item-name');
+            const catInput = document.getElementById('item-category');
+
+            modal.classList.remove('hidden');
+            if (id) {
+                const item = appData.items.find(i => i.id === id);
+                title.textContent = '持ち物を編集';
+                idInput.value = item.id;
+                nameInput.value = item.name;
+                catInput.value = item.category || '';
+            } else {
+                title.textContent = '持ち物を追加';
+                idInput.value = '';
+                nameInput.value = '';
+                catInput.value = '';
+            }
+        }
+
+        function closeItemModal() {
+            document.getElementById('modal-item').classList.add('hidden');
+        }
+
+        function saveItem(event) {
+            event.preventDefault();
+            const id = document.getElementById('item-id').value;
+            const name = document.getElementById('item-name').value.trim();
+            const category = document.getElementById('item-category').value.trim();
+            if (!name) return;
+
+            if (id) {
+                const item = appData.items.find(i => i.id === id);
+                if (item) { item.name = name; item.category = category; }
+                showToast('持ち物を更新しました', 'success');
+            } else {
+                appData.items.push({ id: 'item-' + Date.now(), name, category });
+                showToast('持ち物を追加しました', 'success');
+            }
+            saveData();
+            closeItemModal();
+            renderMasterItems();
+        }
+
+        let pendingDeleteAction = null;
+        function confirmDeleteItem(id) {
+            showConfirmModal('持ち物の削除', 'この持ち物を削除しますか？紐付けも解除されます。', () => {
+                appData.items = appData.items.filter(i => i.id !== id);
+                Object.keys(appData.relations).forEach(tId => {
+                    if (appData.relations[tId][id]) delete appData.relations[tId][id];
+                });
+                saveData();
+                renderMasterItems();
+                showToast('持ち物を削除しました', 'success');
+            });
+        }
+
+        function renderMasterTasks() {
+            const tbody = document.getElementById('master-tasks-tbody');
+            if (!tbody) return;
+
+            if (appData.tasks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="py-6 text-center text-slate-400 text-xs">用事がありません</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = appData.tasks.map(task => `
+                <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="py-3 px-3 font-medium text-slate-800">${escapeHTML(task.name)}</td>
+                    <td class="py-3 px-3 text-slate-500 text-xs">${escapeHTML(task.desc || '-')}</td>
+                    <td class="py-3 px-3 text-right space-x-1">
+                        <button onclick="openTaskModal('${task.id}')" class="text-brand-600 p-1.5 rounded-lg hover:bg-brand-50"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <button onclick="confirmDeleteTask('${task.id}')" class="text-rose-500 p-1.5 rounded-lg hover:bg-rose-50"><i class="fa-solid fa-trash text-xs"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openTaskModal(id = null) {
+            const modal = document.getElementById('modal-task');
+            const title = document.getElementById('modal-task-title');
+            const idInput = document.getElementById('task-id');
+            const nameInput = document.getElementById('task-name');
+            const descInput = document.getElementById('task-desc');
+
+            modal.classList.remove('hidden');
+            if (id) {
+                const task = appData.tasks.find(t => t.id === id);
+                title.textContent = '用事を編集';
+                idInput.value = task.id;
+                nameInput.value = task.name;
+                descInput.value = task.desc || '';
+            } else {
+                title.textContent = '用事を追加';
+                idInput.value = '';
+                nameInput.value = '';
+                descInput.value = '';
+            }
+        }
+
+        function closeTaskModal() {
+            document.getElementById('modal-task').classList.add('hidden');
+        }
+
+        function saveTask(event) {
+            event.preventDefault();
+            const id = document.getElementById('task-id').value;
+            const name = document.getElementById('task-name').value.trim();
+            const desc = document.getElementById('task-desc').value.trim();
+            if (!name) return;
+
+            if (id) {
+                const task = appData.tasks.find(t => t.id === id);
+                if (task) { task.name = name; task.desc = desc; }
+                showToast('用事を更新しました', 'success');
+            } else {
+                const newId = 'task-' + Date.now();
+                appData.tasks.push({ id: newId, name, desc });
+                appData.relations[newId] = {};
+                showToast('用事を追加しました', 'success');
+            }
+            saveData();
+            closeTaskModal();
+            renderMasterTasks();
+            initRelationFilter();
+        }
+
+        function confirmDeleteTask(id) {
+            showConfirmModal('用事の削除', 'この用事を削除しますか？', () => {
+                appData.tasks = appData.tasks.filter(t => t.id !== id);
+                delete appData.relations[id];
+                saveData();
+                renderMasterTasks();
+                initRelationFilter();
+                showToast('用事を削除しました', 'success');
+            });
+        }
+
+        function showConfirmModal(title, message, onOk) {
+            const modal = document.getElementById('modal-confirm');
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            const okBtn = document.getElementById('confirm-ok-btn');
+            okBtn.onclick = () => {
+                closeConfirmModal();
+                onOk();
+            };
+            modal.classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('modal-confirm').classList.add('hidden');
+        }
+
+        function initRelationFilter() {
+            const select = document.getElementById('relation-task-filter');
+            if (!select) return;
+            const currentVal = select.value;
+            if (appData.tasks.length === 0) {
+                select.innerHTML = `<option value="">用事がありません</option>`;
+                return;
+            }
+            select.innerHTML = appData.tasks.map(t => `
+                <option value="${t.id}" ${currentVal === t.id ? 'selected' : ''}>${escapeHTML(t.name)}</option>
+            `).join('');
+            if (!select.value && appData.tasks.length > 0) {
+                select.value = appData.tasks[0].id;
+            }
+        }
+
+        function renderRelationsMatrix() {
+            const container = document.getElementById('relations-container');
+            const select = document.getElementById('relation-task-filter');
+            if (!container || !select) return;
+
+            const taskId = select.value;
+            if (!taskId) {
+                container.innerHTML = `<div class="py-6 text-center text-slate-400 text-xs">用事を選択してください</div>`;
+                return;
+            }
+
+            if (appData.items.length === 0) {
+                container.innerHTML = `<div class="py-6 text-center text-slate-400 text-xs">持ち物が登録されていません</div>`;
+                return;
+            }
+
+            if (!appData.relations[taskId]) appData.relations[taskId] = {};
+            const taskRelations = appData.relations[taskId];
+
+            container.innerHTML = `
+                <div class="divide-y divide-slate-100 border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-xs">
+                ` + appData.items.map(item => {
+                    const isLinked = taskRelations[item.id] !== undefined;
+                    const currentPriority = isLinked ? taskRelations[item.id] : 1;
+
+                    return `
+                        <div class="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-slate-50/50 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" ${isLinked ? 'checked' : ''} onchange="toggleRelationLink('${taskId}', '${item.id}', this)" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                                <div>
+                                    <div class="font-medium text-slate-900 text-xs sm:text-sm">${escapeHTML(item.name)}</div>
+                                    <div class="text-[10px] text-slate-400">${escapeHTML(item.category || '')}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 pl-7 sm:pl-0">
+                                <span class="text-[11px] text-slate-500">優先度:</span>
+                                <select ${!isLinked ? 'disabled' : ''} onchange="updateRelationPriority('${taskId}', '${item.id}', this.value)" class="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-40 font-medium">
+                                    <option value="1" ${currentPriority == 1 ? 'selected' : ''}>必須</option>
+                                    <option value="2" ${currentPriority == 2 ? 'selected' : ''}>重要</option>
+                                    <option value="3" ${currentPriority == 3 ? 'selected' : ''}>推奨</option>
+                                    <option value="4" ${currentPriority == 4 ? 'selected' : ''}>要余裕</option>
+                                    <option value="5" ${currentPriority == 5 ? 'selected' : ''}>任意</option>
+                                </select>
+                            </div>
+                        </div>
+                    `;
+                }).join('') + `</div>`;
+        }
+
+        function toggleRelationLink(taskId, itemId, checkbox) {
+            if (!appData.relations[taskId]) appData.relations[taskId] = {};
+            if (checkbox.checked) {
+                appData.relations[taskId][itemId] = 1;
+            } else {
+                delete appData.relations[taskId][itemId];
+            }
+            saveData();
+            renderRelationsMatrix();
+        }
+
+        function updateRelationPriority(taskId, itemId, priorityVal) {
+            if (!appData.relations[taskId]) appData.relations[taskId] = {};
+            appData.relations[taskId][itemId] = parseInt(priorityVal, 10);
+            saveData();
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const bgClass = type === 'error' ? 'bg-rose-600' : 'bg-slate-900';
+            toast.className = `${bgClass} text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center space-x-2 pointer-events-auto`;
+            
+            const icon = type === 'error' ? 'fa-circle-exclamation text-rose-200' : 'fa-circle-check text-emerald-400';
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${escapeHTML(message)}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag] || tag));
+        }
+
+        window.onload = function() {
+            loadData();
+            renderHomeTasks();
+            if (typeof initCloudSync === 'function') initCloudSync();
+        };
+    
+        // PWA: cache the app shell for offline use.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => {
+                    console.warn('Service Worker registration failed:', err);
+                });
+            });
+        }
+
+    </script>
+</body>
+</html>
