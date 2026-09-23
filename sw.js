@@ -1,10 +1,9 @@
-const CACHE_NAME = 'monocheck-v2';
+const CACHE_NAME = 'monocheck-v3';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './icon.png',
-  './icon.svg',
   './sync.js'
 ];
 

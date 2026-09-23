@@ -65,12 +65,8 @@
         <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <div class="flex items-center space-x-3 cursor-pointer group" onclick="switchTab('home')">
                 <!-- App Logo Card -->
-                <div class="w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-900 shadow-sm p-1.5 overflow-hidden">
-                    <svg viewBox="0 0 100 100" class="w-full h-full fill-brand-600">
-                        <path d="M35 20 C35 12, 65 12, 65 20 L65 28 C75 28, 85 38, 85 50 L85 80 C85 88, 75 92, 65 92 L35 92 C25 92, 15 88, 15 80 L15 50 C15 38, 25 28, 35 28 Z" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
-                        <path d="M42 15 L58 15 C60 15, 60 25, 58 25 L42 25 C40 25, 40 15, 42 15 Z" fill="currentColor"/>
-                        <path d="M32 50 L45 65 L70 38" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                <div class="w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-900 shadow-sm p-1 overflow-hidden">
+                    <img src="./icon.png" alt="MONOcheck" class="w-full h-full object-cover rounded-xl">
                 </div>
                 <div>
                     <h1 class="font-extrabold text-base tracking-tight text-slate-900 leading-tight">MONO<span class="text-brand-600">check</span></h1>
@@ -214,8 +210,9 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="border-b border-slate-200 text-[11px] text-slate-400 uppercase bg-slate-50/80">
-                                    <th class="py-2.5 px-3 font-bold">アイテム名</th>
-                                    <th class="py-2.5 px-3 font-bold">カテゴリ</th>
+                                    <th class="py-2.5 px-3 font-bold">名前</th>
+                                    <th class="py-2.5 px-3 font-bold">種類</th>
+                                    <th class="py-2.5 px-3 font-bold">収納先</th>
                                     <th class="py-2.5 px-3 font-bold">現在の場所</th>
                                     <th class="py-2.5 px-3 font-bold text-right">操作</th>
                                 </tr>
@@ -309,9 +306,22 @@
                     <input type="text" id="item-category" placeholder="例: ガジェット" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
                 </div>
                 <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">種類</label>
+                    <select id="item-type" onchange="updateItemParentOptions()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        <option value="item">アイテム（単体で持ち歩く物）</option>
+                        <option value="container">収納（バッグ・ポーチ・ケースなど）</option>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1">収納は中に別の持ち物を入れられます。収納の中に収納を入れることもできます。</p>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">収納先</label>
+                    <select id="item-parent" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none"></select>
+                    <p class="text-[10px] text-slate-400 mt-1">この持ち物を入れている収納を指定します。</p>
+                </div>
+                <div>
                     <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">現在の場所</label>
                     <select id="item-location" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none"></select>
-                    <p class="text-[10px] text-slate-400 mt-1">基本は「🎒 鞄」。持ち出していない物は「🏠 家」などに変更できます。</p>
+                    <p class="text-[10px] text-slate-400 mt-1">今どこにあるかを指定します。バッグ名・家など、現在の「場所」をそのまま使えます。</p>
                 </div>
                 <div class="flex justify-end space-x-2 pt-2">
                     <button type="button" onclick="closeItemModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">キャンセル</button>
@@ -524,6 +534,7 @@
                     appData.locations = Array.isArray(parsed.locations) && parsed.locations.length
                         ? parsed.locations
                         : JSON.parse(JSON.stringify(DEFAULT_LOCATIONS));
+                    normalizeItemData();
                     normalizeItemLocations();
                     return;
                 } catch (e) {
@@ -535,6 +546,7 @@
             appData.relations = JSON.parse(JSON.stringify(DEFAULT_RELATIONS));
             appData.checkedItems = {};
             appData.locations = JSON.parse(JSON.stringify(DEFAULT_LOCATIONS));
+            normalizeItemData();
             normalizeItemLocations();
             saveData();
         }
@@ -553,6 +565,154 @@
             appData.items.forEach(item => {
                 if (!item.locationId || !validIds.has(item.locationId)) item.locationId = 'location-bag';
             });
+        }
+
+        function normalizeItemData() {
+            if (!Array.isArray(appData.items)) appData.items = [];
+            const ids = new Set(appData.items.map(item => item.id));
+            appData.items.forEach(item => {
+                item.type = item.type === 'container' ? 'container' : 'item';
+                if (!Object.prototype.hasOwnProperty.call(item, 'parentId')) item.parentId = null;
+                if (item.parentId === item.id || !ids.has(item.parentId)) item.parentId = null;
+            });
+
+            // 既存データに循環した収納先があっても壊れないようにする。
+            appData.items.forEach(item => {
+                const seen = new Set([item.id]);
+                let current = item;
+                while (current.parentId) {
+                    if (seen.has(current.parentId)) {
+                        item.parentId = null;
+                        break;
+                    }
+                    seen.add(current.parentId);
+                    const parent = appData.items.find(i => i.id === current.parentId);
+                    if (!parent || parent.type !== 'container') {
+                        item.parentId = null;
+                        break;
+                    }
+                    current = parent;
+                }
+            });
+        }
+
+        function getItemTypeLabel(item) {
+            return item?.type === 'container' ? '収納' : 'アイテム';
+        }
+
+        function getItemTypeIcon(item) {
+            return item?.type === 'container' ? '🧳' : '📦';
+        }
+
+        function getItemById(id) {
+            return appData.items.find(item => item.id === id) || null;
+        }
+
+        function getItemRoot(item) {
+            if (!item) return null;
+            const seen = new Set([item.id]);
+            let current = item;
+            while (current.parentId) {
+                if (seen.has(current.parentId)) break;
+                const parent = getItemById(current.parentId);
+                if (!parent) break;
+                seen.add(parent.id);
+                current = parent;
+            }
+            return current;
+        }
+
+        function getItemChildren(parentId) {
+            return appData.items.filter(item => item.parentId === parentId);
+        }
+
+        function getDescendantIds(itemId) {
+            const result = [];
+            const walk = parentId => {
+                getItemChildren(parentId).forEach(child => {
+                    result.push(child.id);
+                    walk(child.id);
+                });
+            };
+            walk(itemId);
+            return result;
+        }
+
+        function renderParentOptions(selectedId = '') {
+            const select = document.getElementById('item-parent');
+            if (!select) return;
+            const currentId = document.getElementById('item-id')?.value || '';
+            const currentItem = getItemById(currentId);
+            const blocked = new Set([currentId, ...getDescendantIds(currentId)]);
+            const containers = appData.items.filter(item =>
+                item.type === 'container' && !blocked.has(item.id)
+            );
+            select.innerHTML =
+                `<option value="">なし（直接持ち歩く）</option>` +
+                containers.map(item =>
+                    `<option value="${escapeHTML(item.id)}" ${item.id === selectedId ? 'selected' : ''}>${escapeHTML(getItemTypeIcon(item))} ${escapeHTML(item.name)}</option>`
+                ).join('');
+        }
+
+        function updateItemParentOptions() {
+            const type = document.getElementById('item-type')?.value || 'item';
+            const parentSelect = document.getElementById('item-parent');
+            if (!parentSelect) return;
+            parentSelect.disabled = false;
+            renderParentOptions(parentSelect.value);
+            if (type === 'container') {
+                // 収納も別の収納に入れられるため、選択肢はそのまま。
+                parentSelect.disabled = false;
+            }
+        }
+
+        function getChecklistRootId(itemId) {
+            const item = getItemById(itemId);
+            return getItemRoot(item)?.id || itemId;
+        }
+
+        function buildChecklistChildrenHtml(parentId, depth = 0) {
+            const children = getItemChildren(parentId).sort((a, b) => a.name.localeCompare(b.name));
+            if (!children.length) return '';
+            return children.map(child => {
+                const checked = !!appData.checkedItems[child.id];
+                const nested = buildChecklistChildrenHtml(child.id, depth + 1);
+                return `
+                    <div class="pl-${Math.min(12, 4 + depth * 4)} py-2">
+                        <div class="flex items-center gap-2 text-xs ${checked ? 'text-slate-400 line-through' : 'text-slate-700'}">
+                            <span class="w-5 h-5 rounded-lg ${checked ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'} flex items-center justify-center shrink-0">
+                                <i class="fa-solid ${checked ? 'fa-check' : (child.type === 'container' ? 'fa-folder' : 'fa-box')} text-[9px]"></i>
+                            </span>
+                            <span class="font-medium">${escapeHTML(child.name)}</span>
+                            <span class="text-[9px] text-slate-400">${escapeHTML(getItemTypeLabel(child))}</span>
+                        </div>
+                        ${nested}
+                    </div>`;
+            }).join('');
+        }
+
+        function toggleContainerExpand(itemId) {
+            const el = document.getElementById(`children-${itemId}`);
+            const icon = document.getElementById(`expand-icon-${itemId}`);
+            if (!el) return;
+            const hidden = el.classList.toggle('hidden');
+            if (icon) icon.className = `fa-solid ${hidden ? 'fa-chevron-right' : 'fa-chevron-down'} text-[10px]`;
+        }
+
+        function toggleChecklistUnit(itemId, checkbox) {
+            const root = getItemById(itemId);
+            if (!root) return;
+            const ids = [root.id, ...getDescendantIds(root.id)];
+            ids.forEach(id => { appData.checkedItems[id] = checkbox.checked; });
+            saveData();
+            ids.forEach(id => {
+                const childEl = document.querySelector(`[data-child-status="${id}"]`);
+                if (childEl) {
+                    childEl.classList.toggle('bg-emerald-100', checkbox.checked);
+                    childEl.classList.toggle('text-emerald-600', checkbox.checked);
+                }
+            });
+            generateChecklist();
         }
 
         function getLocation(locationId) {
@@ -780,6 +940,7 @@
                 return;
             }
 
+            // 用事に紐づいた個々の持ち物を、実際に持ち出す最上位の収納単位へまとめる。
             const aggregated = {};
             window.selectedTaskIds.forEach(taskId => {
                 const taskRelations = appData.relations[taskId] || {};
@@ -787,22 +948,21 @@
                 const taskName = taskObj ? taskObj.name : '用事';
 
                 Object.keys(taskRelations).forEach(itemId => {
-                    const priorityRank = taskRelations[itemId];
-                    const itemObj = appData.items.find(i => i.id === itemId);
+                    const priorityRank = Number(taskRelations[itemId]) || 5;
+                    const itemObj = getItemById(itemId);
                     if (!itemObj) return;
 
-                    if (!aggregated[itemId]) {
-                        aggregated[itemId] = {
-                            item: itemObj,
+                    const root = getItemRoot(itemObj) || itemObj;
+                    if (!aggregated[root.id]) {
+                        aggregated[root.id] = {
+                            item: root,
                             bestRank: priorityRank,
                             sources: [taskName]
                         };
                     } else {
-                        if (priorityRank < aggregated[itemId].bestRank) {
-                            aggregated[itemId].bestRank = priorityRank;
-                        }
-                        if (!aggregated[itemId].sources.includes(taskName)) {
-                            aggregated[itemId].sources.push(taskName);
+                        aggregated[root.id].bestRank = Math.min(aggregated[root.id].bestRank, priorityRank);
+                        if (!aggregated[root.id].sources.includes(taskName)) {
+                            aggregated[root.id].sources.push(taskName);
                         }
                     }
                 });
@@ -828,9 +988,7 @@
             }
 
             const groupedByRank = { 1: [], 2: [], 3: [], 4: [], 5: [] };
-            itemsArray.forEach(entry => {
-                groupedByRank[entry.bestRank].push(entry);
-            });
+            itemsArray.forEach(entry => groupedByRank[entry.bestRank].push(entry));
 
             let htmlOutput = '';
             [1, 2, 3, 4, 5].forEach(rank => {
@@ -853,25 +1011,45 @@
                 groupItems.sort((a, b) => a.item.name.localeCompare(b.item.name)).forEach(entry => {
                     const itemId = entry.item.id;
                     const isChecked = !!appData.checkedItems[itemId];
-                    const sourcesStr = entry.sources.join(', ');
+                    const sourcesStr = entry.sources.join('、');
+                    const isContainer = entry.item.type === 'container';
+                    const childHtml = isContainer ? buildChecklistChildrenHtml(itemId) : '';
+                    const hasChildren = isContainer && getItemChildren(itemId).length > 0;
 
                     htmlOutput += `
-                        <label class="flex items-center justify-between p-3.5 hover:bg-slate-50/80 cursor-pointer transition-colors ${isChecked ? 'bg-slate-50/50' : ''}">
-                            <div class="flex items-center space-x-3 min-w-0">
-                                <input type="checkbox" data-item-id="${itemId}" ${isChecked ? 'checked' : ''} onchange="toggleCheckItem(this)" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 shrink-0">
-                                <div class="min-w-0">
-                                    <div class="font-medium text-slate-900 text-xs sm:text-sm truncate ${isChecked ? 'line-through text-slate-400' : ''}" id="label-text-${itemId}">${escapeHTML(entry.item.name)}</div>
-                                    <div class="text-[10px] text-slate-400 truncate mt-0.5">用途: ${escapeHTML(sourcesStr)}</div>
-                                    <div class="flex items-center gap-1.5 mt-1">
-                                        <span class="text-[10px] font-semibold text-brand-700 bg-brand-50 rounded-lg px-2 py-0.5" data-location-label="${itemId}">${escapeHTML(getLocationLabel(entry.item.locationId))}</span>
-                                        <select data-location-select="${itemId}" onchange="changeItemLocation('${itemId}', this.value)" onclick="event.stopPropagation()" class="text-[10px] bg-white border border-slate-200 rounded-lg px-1.5 py-0.5">
-                                            ${appData.locations.map(loc => `<option value="${escapeHTML(loc.id)}" ${entry.item.locationId === loc.id ? 'selected' : ''}>${escapeHTML(loc.icon || '📍')} ${escapeHTML(loc.name)}</option>`).join('')}
-                                        </select>
+                        <div class="${isChecked ? 'bg-slate-50/50' : ''}">
+                            <label class="flex items-center justify-between p-3.5 hover:bg-slate-50/80 cursor-pointer transition-colors">
+                                <div class="flex items-center space-x-3 min-w-0">
+                                    <input type="checkbox" data-item-id="${itemId}" ${isChecked ? 'checked' : ''}
+                                        onchange="toggleChecklistUnit('${itemId}', this)"
+                                        class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 shrink-0">
+                                    <div class="min-w-0">
+                                        <div class="font-medium text-slate-900 text-xs sm:text-sm truncate ${isChecked ? 'line-through text-slate-400' : ''}" id="label-text-${itemId}">
+                                            ${escapeHTML(getItemTypeIcon(entry.item))} ${escapeHTML(entry.item.name)}
+                                        </div>
+                                        <div class="text-[10px] text-slate-400 truncate mt-0.5">
+                                            ${isContainer ? '収納単位' : '持ち物'} ・ 用途: ${escapeHTML(sourcesStr)}
+                                        </div>
+                                        <div class="flex items-center gap-1.5 mt-1">
+                                            <span class="text-[10px] font-semibold text-brand-700 bg-brand-50 rounded-lg px-2 py-0.5" data-location-label="${itemId}">
+                                                ${escapeHTML(getLocationLabel(entry.item.locationId))}
+                                            </span>
+                                            <select data-location-select="${itemId}" onchange="changeItemLocation('${itemId}', this.value)" onclick="event.stopPropagation()" class="text-[10px] bg-white border border-slate-200 rounded-lg px-1.5 py-0.5">
+                                                ${appData.locations.map(loc => `<option value="${escapeHTML(loc.id)}" ${entry.item.locationId === loc.id ? 'selected' : ''}>${escapeHTML(loc.icon || '📍')} ${escapeHTML(loc.name)}</option>`).join('')}
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <span class="text-[10px] font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg shrink-0 ml-2">${escapeHTML(entry.item.category || '一般')}</span>
-                        </label>
+                                <div class="flex items-center gap-2 shrink-0 ml-2">
+                                    ${hasChildren ? `<button type="button" onclick="event.preventDefault(); event.stopPropagation(); toggleContainerExpand('${itemId}')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center" title="中身を表示"><i id="expand-icon-${itemId}" class="fa-solid fa-chevron-right text-[10px]"></i></button>` : ''}
+                                    <span class="text-[10px] font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg">${escapeHTML(entry.item.category || getItemTypeLabel(entry.item))}</span>
+                                </div>
+                            </label>
+                            ${hasChildren ? `<div id="children-${itemId}" class="hidden px-4 pb-3 bg-slate-50/40 border-t border-slate-100">
+                                <div class="pt-2 text-[10px] font-semibold text-slate-400">中身</div>
+                                ${childHtml}
+                            </div>` : ''}
+                        </div>
                     `;
                 });
                 htmlOutput += `</div></div>`;
@@ -935,27 +1113,37 @@
         function renderMasterItems() {
             const tbody = document.getElementById('master-items-tbody');
             if (!tbody) return;
+            normalizeItemData();
+            normalizeItemLocations();
 
             if (appData.items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400 text-xs">アイテムがありません</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400 text-xs">持ち物がありません</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = appData.items.map(item => `
-                <tr class="hover:bg-slate-50/50 transition-colors">
-                    <td class="py-3 px-3 font-medium text-slate-800">${escapeHTML(item.name)}</td>
-                    <td class="py-3 px-3 text-slate-500 text-xs">${escapeHTML(item.category || '-')}</td>
-                    <td class="py-3 px-3 text-xs">
-                        <select data-location-select="${item.id}" onchange="changeItemLocation('${item.id}', this.value)" class="max-w-[140px] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
-                            ${appData.locations.map(loc => `<option value="${escapeHTML(loc.id)}" ${item.locationId === loc.id ? 'selected' : ''}>${escapeHTML(loc.icon || '📍')} ${escapeHTML(loc.name)}</option>`).join('')}
-                        </select>
-                    </td>
-                    <td class="py-3 px-3 text-right space-x-1">
-                        <button onclick="openItemModal('${item.id}')" class="text-brand-600 p-1.5 rounded-lg hover:bg-brand-50"><i class="fa-solid fa-pen text-xs"></i></button>
-                        <button onclick="confirmDeleteItem('${item.id}')" class="text-rose-500 p-1.5 rounded-lg hover:bg-rose-50"><i class="fa-solid fa-trash text-xs"></i></button>
-                    </td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = appData.items.map(item => {
+                const parent = getItemById(item.parentId);
+                return `
+                    <tr class="hover:bg-slate-50/50 transition-colors">
+                        <td class="py-3 px-3 font-medium text-slate-800">${escapeHTML(getItemTypeIcon(item))} ${escapeHTML(item.name)}</td>
+                        <td class="py-3 px-3 text-xs">
+                            <span class="inline-flex items-center px-2 py-1 rounded-lg ${item.type === 'container' ? 'bg-brand-50 text-brand-700' : 'bg-slate-100 text-slate-600'} font-semibold">
+                                ${escapeHTML(getItemTypeLabel(item))}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 text-xs text-slate-500">${parent ? escapeHTML(getItemTypeIcon(parent) + ' ' + parent.name) : '<span class="text-slate-300">なし</span>'}</td>
+                        <td class="py-3 px-3 text-xs">
+                            <select data-location-select="${item.id}" onchange="changeItemLocation('${item.id}', this.value)" class="max-w-[140px] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
+                                ${appData.locations.map(loc => `<option value="${escapeHTML(loc.id)}" ${item.locationId === loc.id ? 'selected' : ''}>${escapeHTML(loc.icon || '📍')} ${escapeHTML(loc.name)}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td class="py-3 px-3 text-right space-x-1">
+                            <button onclick="openItemModal('${item.id}')" class="text-brand-600 p-1.5 rounded-lg hover:bg-brand-50"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button onclick="confirmDeleteItem('${item.id}')" class="text-rose-500 p-1.5 rounded-lg hover:bg-rose-50"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function openItemModal(id = null) {
@@ -964,23 +1152,30 @@
             const idInput = document.getElementById('item-id');
             const nameInput = document.getElementById('item-name');
             const catInput = document.getElementById('item-category');
+            const typeInput = document.getElementById('item-type');
+            const parentInput = document.getElementById('item-parent');
 
             modal.classList.remove('hidden');
-            renderLocationOptions('location-bag');
             if (id) {
                 const item = appData.items.find(i => i.id === id);
+                if (!item) return;
                 title.textContent = '持ち物を編集';
                 idInput.value = item.id;
                 nameInput.value = item.name;
                 catInput.value = item.category || '';
+                typeInput.value = item.type === 'container' ? 'container' : 'item';
+                renderParentOptions(item.parentId || '');
                 renderLocationOptions(item.locationId || 'location-bag');
             } else {
                 title.textContent = '持ち物を追加';
                 idInput.value = '';
                 nameInput.value = '';
                 catInput.value = '';
+                typeInput.value = 'item';
+                renderParentOptions('');
                 renderLocationOptions('location-bag');
             }
+            parentInput.value = parentInput.value || '';
         }
 
         function closeItemModal() {
@@ -992,17 +1187,42 @@
             const id = document.getElementById('item-id').value;
             const name = document.getElementById('item-name').value.trim();
             const category = document.getElementById('item-category').value.trim();
+            const type = document.getElementById('item-type').value === 'container' ? 'container' : 'item';
+            const parentId = document.getElementById('item-parent').value || null;
             const locationId = document.getElementById('item-location').value || 'location-bag';
             if (!name) return;
 
+            const parent = parentId ? getItemById(parentId) : null;
+            if (parentId && (!parent || parent.type !== 'container')) {
+                showToast('収納先には「収納」を指定してください', 'error');
+                return;
+            }
+
             if (id) {
                 const item = appData.items.find(i => i.id === id);
-                if (item) { item.name = name; item.category = category; item.locationId = locationId; }
+                if (!item) return;
+                if (parentId === id || (parentId && getDescendantIds(id).includes(parentId))) {
+                    showToast('自分自身や自分の中にある収納は収納先にできません', 'error');
+                    return;
+                }
+                item.name = name;
+                item.category = category;
+                item.type = type;
+                item.parentId = parentId;
+                item.locationId = locationId;
                 showToast('持ち物を更新しました', 'success');
             } else {
-                appData.items.push({ id: 'item-' + Date.now(), name, category, locationId });
+                appData.items.push({
+                    id: 'item-' + Date.now(),
+                    name,
+                    category,
+                    type,
+                    parentId,
+                    locationId
+                });
                 showToast('持ち物を追加しました', 'success');
             }
+            normalizeItemData();
             saveData();
             closeItemModal();
             renderMasterItems();
@@ -1010,8 +1230,11 @@
 
         let pendingDeleteAction = null;
         function confirmDeleteItem(id) {
-            showConfirmModal('持ち物の削除', 'この持ち物を削除しますか？紐付けも解除されます。', () => {
+            showConfirmModal('持ち物の削除', 'この持ち物を削除しますか？収納の場合、中に入っている持ち物は収納先なしになります。紐付けも解除されます。', () => {
                 appData.items = appData.items.filter(i => i.id !== id);
+                appData.items.forEach(item => {
+                    if (item.parentId === id) item.parentId = null;
+                });
                 Object.keys(appData.relations).forEach(tId => {
                     if (appData.relations[tId][id]) delete appData.relations[tId][id];
                 });
@@ -1231,6 +1454,7 @@
 
         window.onload = function() {
             loadData();
+            normalizeItemData();
             normalizeItemLocations();
             renderHomeTasks();
             renderLocationOptions('location-bag');
@@ -1240,7 +1464,7 @@
         // PWA: cache the app shell for offline use.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js').catch(err => {
+                navigator.serviceWorker.register('./sw.js').catch(err => {
                     console.warn('Service Worker registration failed:', err);
                 });
             });

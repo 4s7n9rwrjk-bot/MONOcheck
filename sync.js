@@ -180,10 +180,13 @@
                 if (typeof normalizeItemLocations === 'function') normalizeItemLocations();
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
                 localStorage.setItem(META_KEY, String(remoteUpdated));
+                if (typeof normalizeItemData === 'function') normalizeItemData();
                 renderHomeTasks();
                 if (typeof renderMasterItems === 'function') renderMasterItems();
                 if (typeof renderMasterTasks === 'function') renderMasterTasks();
                 if (typeof renderRelationsMatrix === 'function') renderRelationsMatrix();
+                if (typeof renderLocations === 'function') renderLocations();
+                if (typeof renderLocationOptions === 'function') renderLocationOptions('location-bag');
                 suppressCloudSync = false;
             }
             setStatus('同期済み', 'online');
