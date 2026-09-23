@@ -176,6 +176,8 @@
                 appData.tasks = remote.data?.tasks || [];
                 appData.relations = remote.data?.relations || {};
                 appData.checkedItems = remote.data?.checkedItems || {};
+                appData.locations = Array.isArray(remote.data?.locations) ? remote.data.locations : (appData.locations || []);
+                if (typeof normalizeItemLocations === 'function') normalizeItemLocations();
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
                 localStorage.setItem(META_KEY, String(remoteUpdated));
                 renderHomeTasks();
