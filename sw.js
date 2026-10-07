@@ -1,10 +1,10 @@
-const CACHE_NAME = 'monocheck-v3';
+const CACHE_NAME = 'monocheck-v5';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './icon.png',
-  './sync.js'
+  './sync.js?v=20261007-2'
 ];
 
 self.addEventListener('install', event => {
@@ -25,6 +25,12 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.pathname.endsWith('/sw.js')) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }));
+    return;
+  }
 
   const url = new URL(event.request.url);
 

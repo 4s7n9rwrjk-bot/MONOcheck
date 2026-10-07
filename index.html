@@ -56,7 +56,7 @@
     <link rel="apple-touch-icon" href="icon.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./supabase-config.js"></script>
-    <script src="./sync.js"></script>
+    <script src="./sync.js?v=20261007-2"></script>
 
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
@@ -548,7 +548,11 @@
             appData.locations = JSON.parse(JSON.stringify(DEFAULT_LOCATIONS));
             normalizeItemData();
             normalizeItemLocations();
-            saveData();
+            // 初回起動時の初期データは「ユーザーが編集したデータ」ではない。
+            // ここで更新日時を付けると、クラウドの最新データより新しいと誤判定されるため、
+            // ローカル保存だけ行い、同期判定用の時刻は付けない。
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            localStorage.removeItem('monocheck_local_updated_at');
         }
 
         function saveData() {
@@ -1464,7 +1468,7 @@
         // PWA: cache the app shell for offline use.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(err => {
+                navigator.serviceWorker.register('./sw.js?v=20261007-2', { updateViaCache: 'none' }).catch(err => {
                     console.warn('Service Worker registration failed:', err);
                 });
             });
